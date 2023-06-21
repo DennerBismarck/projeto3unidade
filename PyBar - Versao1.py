@@ -26,6 +26,6 @@ while opcao != "0":
         print("Ainda em desenvolvimento...")
     else:
         print("Opção inválida!")
-    input("Digite qualquer tecla para continuar")
+    input("Pressione ENTER para continuar")
     opcao = menuPrincipal()
 
