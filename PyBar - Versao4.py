@@ -5,7 +5,6 @@ funcionarios = {}
 produtos = {}
 pedidos = {}
 
-
 #Bloco de código carregando o "banco de dados" dos arquivos .dat
 
 #P/Funcionários
@@ -81,25 +80,40 @@ def menuCRUD(nome_funcao):
 def cadastrarFuncionario():
     print("\nCADASTRO DE FUNCIONÁRIOS")
     nome = input("Nome: ")
-    cpf = input("CPF: ") #Alterar para funcionar com validador depois
     cargo = input("Cargo: ")
-    funcionarios[cpf] = [nome,cargo] #Se o cpf for repetido, pode dar erro...
+    cpf = input("CPF: ")
+    if validar_cpf(cpf):
+        funcionarios[cpf] = [nome,cargo]
 
+        tb_funcionarios = open("bd_funcionarios.dat", "wb")
+        pickle.dump(funcionarios,tb_funcionarios)
+        tb_funcionarios.close()
 
-    tb_funcionarios = open("bd_funcionarios.dat", "wb")
-    pickle.dump(funcionarios,tb_funcionarios)
-    tb_funcionarios.close()
-
-    print("Funcionário cadastrado com sucesso!")
+        print("Funcionário cadastrado com sucesso!")
+    else:
+        print("CPF inválido ou já existente!")
 
 def pesquisarFuncionario():
     print("\nPESQUISAR FUNCIONÁRIO")
     cpf_pesquisado = input("\nInforme o cpf do funcionário que deseja pesquisar: ")
+
     if cpf_pesquisado in funcionarios:
+
         print("Nome: ", funcionarios[cpf_pesquisado][0])
         print("CPF: ", cpf_pesquisado)
         print("Cargo: ", funcionarios[cpf_pesquisado][1])
+
+        escolha = input("Digite S para ver o relatório de vendas ou N para continuar: ")
+        while (escolha.upper() != "N" ):
+            if escolha.upper() == "S":
+                relatorio_vendas(funcionarios[cpf_pesquisado])
+            else:
+                print("Digite uma opção válida!")
+            escolha = input("Digite S para ver o relatório de vendas ou N para continuar: ")
+        
         return funcionarios[cpf_pesquisado]
+
+
     else:
         print("CPF não encontrado!")
 
@@ -141,8 +155,8 @@ def cadastrarProduto():
     print("\nCADASTRO DE PRODUTOS")
     nome = input("Nome do produto: ")
     preco = float(input("Preço(0.00): "))
-    descricao = input("descricao: ")
-    produtos[nome] = [preco,descricao] 
+    descricao = input("Descrição: ")
+    produtos[nome] = [preco,descricao, nome] 
 
 
     tb_produtos = open("bd_produtos.dat", "wb")
@@ -209,12 +223,12 @@ def cadastrarPedido():
     print ("chave é: ",chave)
     funcionario = pesquisarFuncionario()
     #Implementar um sistema para somente garçons poderem ser responsáveis pela comanda (?)
-    produto = pesquisarProduto()
     hora_do_pedido = datetime.datetime.now()
-    valor_da_comanda = produto[0]
+    produtos_do_pedido = produtos_dos_pedidos()
+    valor_da_comanda = valores_dos_pedidos(produtos_do_pedido)
     #Depois implementar módulos com dicionários separados para exercerem a função de produtos_dos_pedidos, para calcularmos o valor total do pedido... 
     #...e poder ter mais de um produto por comanda
-    pedidos[chave] = [funcionario[1], produto, valor_da_comanda,hora_do_pedido]
+    pedidos[chave] = [funcionario, produtos_do_pedido, valor_da_comanda,hora_do_pedido]
 
 
     tb_pedidos = open("bd_pedidos.dat", "wb")
@@ -229,25 +243,39 @@ def cadastrarPedido():
 #O Update e o Delete também foram implementados neste mesmo menu.
 def listar_e_pesquisar_pedidos():
     print("\nMENU LISTAGEM DE PEDIDOS")
+    
+
     for pedido in pedidos:
-        print("=====================\nCódigo:%s\nData e hora: %s\n====================="%(pedido, pedidos[pedido][3]))
+        print("=====================\nCódigo:%s\nData: %s \nHora: %s\n====================="%(pedido, pedidos[pedido][3].strftime("%d/%m/%Y"), pedidos[pedido][3].strftime("%H:%M")))
+  
     cod_pesquisado = int(input("\nInforme o código da comanda que você deseja consultar: "))
+    
     if cod_pesquisado in pedidos:
         print("Código:", cod_pesquisado)
-        print("Funcionário:", pedidos[cod_pesquisado][0])
-        print("Produtos:", pedidos[cod_pesquisado][1])
+        print("Funcionário:", pedidos[cod_pesquisado][0][0])
+        
+        print("Listagem dos produtos: ")
+        for i in pedidos[cod_pesquisado][1]:
+            print("=================")
+            print("Produto:",i[2])
+            print("=================")
+        
         print("Valor total: R$%.2f" %(pedidos[cod_pesquisado][2]))
         print("Data e hora do pedido:", pedidos[cod_pesquisado][3])    
+        
         escolha_menu_pedidos = input("Digite S se deseja realizar alguma ação com este pedido e N se deseja voltar: ")
         while(escolha_menu_pedidos.upper() != "N"):
+            
             if(escolha_menu_pedidos.upper() == "S"):
                 escolha_menu_pedidos_UpdateOrDelete = input("Digite 1 se deseja editar o pedido, 2 se deseja deletar o pedido ou 0 se deseja sair: ")
+                
                 while(escolha_menu_pedidos_UpdateOrDelete != "0"):
+                    
                     if(escolha_menu_pedidos_UpdateOrDelete == "1"):
                         print("EDITAR PEDIDO")
                         funcionario = pesquisarFuncionario()
-                        produto = pesquisarProduto()
-                        valor_da_comanda = produto[0]
+                        produto = produtos_dos_pedidos()
+                        valor_da_comanda = valores_dos_pedidos(produtos_dos_pedidos)
                         pedidos[cod_pesquisado] = [funcionario[1], produto, valor_da_comanda]
 
                         tb_pedidos = open("bd_pedidos.dat", "wb")
@@ -271,6 +299,87 @@ def listar_e_pesquisar_pedidos():
     else:
         print("Erro!")
 
+#Função de relatar as vendas de cada funcionário
+def relatorio_vendas(funcionario):
+    j = 1 #Auxiliar para codigos
+    for i in pedidos:
+        if funcionario == pedidos[i][0]:
+            print("=====================================")
+            print("Código:", j)
+            print("Funcionário:",pedidos[i][0][0])
+            print("Listagem dos produtos: ")
+            for k in pedidos[i][1]:
+                print("=================")
+                print("Produto:",k[2])
+                print("=================")
+            print("Valor total: R$%.2f" %(pedidos[i][2]))
+            print("Data e hora do pedido:", pedidos[i][3]) 
+            print("=====================================")
+        j+=1       
+    
+
+
+
+#Funções de apoio (Tratamento de erro e afins)
+
+def validar_cpf(cpf): #O código do validador teve sua base retirada do ChatGPT 
+    for i in funcionarios:
+        if i != cpf:
+            # Remove caracteres não numéricos do CPF
+            cpf = ''.join(filter(str.isdigit, cpf))
+
+            # Verifica se o CPF tem 11 dígitos
+            if len(cpf) != 11:
+                return False
+
+            # Verifica se todos os dígitos são iguais
+            if cpf == cpf[0] * 11:
+                return False
+
+            # Calcula o primeiro dígito verificador
+            soma = sum(int(cpf[i]) * (10 - i) for i in range(9))
+            resto = (soma * 10) % 11
+            if resto == 10:
+                resto = 0
+            if resto != int(cpf[9]):
+                return False
+
+            # Calcula o segundo dígito verificador
+            soma = sum(int(cpf[i]) * (11 - i) for i in range(10))
+            resto = (soma * 10) % 11
+            if resto == 10:
+                resto = 0
+            if resto != int(cpf[10]):
+                return False
+            
+            #Esse trecho do código é original
+            if cpf in funcionarios:
+                return False
+
+            # CPF válido
+            return True
+        else:
+            return False
+
+#Função para adicionar vários produtos por pedido
+def produtos_dos_pedidos():
+    lista_produtos = []
+    lista_produtos.append(pesquisarProduto()) #Garantindo que pelo menos um produto seja adicionado
+    escolha = input("Digite S para adicionar um novo produto ou N para sair: ")
+    while escolha.upper() != "N":
+        if escolha.upper() == "S":
+            lista_produtos.append(pesquisarProduto())
+        else:
+            print("Digite uma opção válida!")
+        escolha = input("Digite S para adicionar um novo produto ou N para sair: ")
+    return lista_produtos
+
+#Função somadora de valores dos pedidos
+def valores_dos_pedidos(produtos):
+    aux = float(0)
+    for i in produtos:
+        aux += i[0]
+    return aux
 
 #Programa inicial principal
 opcao_menu_principal = menuPrincipal()
